@@ -10,9 +10,9 @@ namespace SCLib_SurfaceImpactFeedback
 {
     /// <summary>
     /// シンプルなスケールフェードアウト機能を持つデカール
-    /// IDecalインターフェースを実装し、他のデカールシステムとの互換性を提供
+    /// IEffectインターフェースを実装し、他のエフェクトシステムとの互換性を提供
     /// </summary>
-    public class SimpleDecal : MonoBehaviour, IDecal
+    public class SimpleDecal : MonoBehaviour, IEffect
     {
         [SerializeField] float visibleDuration = 3f;
         [SerializeField] float fadeDuration = 2f;
@@ -30,11 +30,11 @@ namespace SCLib_SurfaceImpactFeedback
         }
 
         /// <summary>
-        /// デカールエフェクトを再生する（IDecalインターフェース実装）
+        /// エフェクトを再生する（IEffectインターフェース実装）
         /// </summary>
         /// <param name="ct">キャンセレーショントークン</param>
-        /// <returns>デカールエフェクト再生のタスク</returns>
-        public async UniTask PlayDecalEffect(CancellationToken ct)
+        /// <returns>エフェクト再生のタスク</returns>
+        public async UniTask PlayEffect(CancellationToken ct)
         {
             await FadeOutDecal(ct);
         }

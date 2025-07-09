@@ -41,7 +41,7 @@ namespace SCLib_SurfaceImpactFeedback
             return effect.effectType switch
             {
                 EffectType.Particle => new ParticleObjectPool(effect.Prefab, collectionCheck, defaultCapacity, maxSize),
-                EffectType.Decal => CreateDecalPool(effect.Prefab, collectionCheck, defaultCapacity, maxSize),
+                EffectType.Effect => CreateEffectPool(effect.Prefab, collectionCheck, defaultCapacity, maxSize),
                 _ => throw new ArgumentException($"未対応のエフェクトタイプです: {effect.effectType}")
             };
         }
@@ -79,28 +79,28 @@ namespace SCLib_SurfaceImpactFeedback
         }
 
         /// <summary>
-        /// デカールプールを作成する（キャッシュ最適化版）
+        /// エフェクトプールを作成する（キャッシュ最適化版）
         /// プレハブのコンポーネントを自動検出して適切なプールを生成
         /// 2回目以降の同じ型は高速なキャッシュから取得
         /// </summary>
-        /// <param name="decalPrefab">デカールプレハブ</param>
+        /// <param name="effectPrefab">エフェクトプレハブ</param>
         /// <param name="collectionCheck">重複チェックを行うか</param>
         /// <param name="defaultCapacity">初期プールサイズ</param>
         /// <param name="maxSize">最大プールサイズ</param>
-        /// <returns>適切なデカールプール</returns>
-        /// <exception cref="ArgumentException">IDecalを実装したコンポーネントが見つからない場合</exception>
-        private static IEffectObjectPool CreateDecalPool(GameObject decalPrefab, bool collectionCheck, int defaultCapacity, int maxSize)
+        /// <returns>適切なエフェクトプール</returns>
+        /// <exception cref="ArgumentException">IEffectを実装したコンポーネントが見つからない場合</exception>
+        private static IEffectObjectPool CreateEffectPool(GameObject effectPrefab, bool collectionCheck, int defaultCapacity, int maxSize)
         {
-            // IDecal実装をチェック
-            if (decalPrefab.TryGetComponent<IDecal>(out var decalComponent))
+            // IEffect実装をチェック
+            if (effectPrefab.TryGetComponent<IEffect>(out var effectComponent))
             {
-                var componentType = decalComponent.GetType();
+                var componentType = effectComponent.GetType();
                 
                 // キャッシュからコンストラクタデリゲートを取得
                 if (constructorCache.TryGetValue(componentType, out var cachedConstructor))
                 {
                     cacheHits++;
-                    return cachedConstructor(decalPrefab, collectionCheck, defaultCapacity, maxSize);
+                    return cachedConstructor(effectPrefab, collectionCheck, defaultCapacity, maxSize);
                 }
                 
                 // キャッシュミス - 新しいデリゲートを作成
@@ -109,7 +109,7 @@ namespace SCLib_SurfaceImpactFeedback
                 // プール型をキャッシュから取得または作成
                 if (!poolTypeCache.TryGetValue(componentType, out var poolType))
                 {
-                    poolType = typeof(DecalObjectPool<>).MakeGenericType(componentType);
+                    poolType = typeof(EffectObjectPool<>).MakeGenericType(componentType);
                     poolTypeCache[componentType] = poolType;
                 }
                 
@@ -117,10 +117,10 @@ namespace SCLib_SurfaceImpactFeedback
                 var constructorDelegate = CreateConstructorDelegate(poolType);
                 constructorCache[componentType] = constructorDelegate;
                 
-                return constructorDelegate(decalPrefab, collectionCheck, defaultCapacity, maxSize);
+                return constructorDelegate(effectPrefab, collectionCheck, defaultCapacity, maxSize);
             }
 
-            throw new ArgumentException($"プレハブ '{decalPrefab.name}' に IDecal を実装したコンポーネントが見つかりません");
+            throw new ArgumentException($"プレハブ '{effectPrefab.name}' に IEffect を実装したコンポーネントが見つかりません");
         }
         
         /// <summary>

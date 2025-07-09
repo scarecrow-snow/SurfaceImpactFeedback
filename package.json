@@ -1,0 +1,23 @@
+{
+  "name": "com.scarecrow.surface_impact_feedback",
+  "version": "1.0.0",
+  "displayName": "SurfaceImpactFeedback_SC_Library",
+  "description": "A framework for playing effects (particles, decals, audio) at impact points based on hit information. Includes surface-based mapping. ",
+  "keywords": [
+    "texture"
+  ],
+  "dependencies": {},
+  "author": {
+    "name": "scarecrow",
+    "url": "https://github.com/scarecrow-snow"
+  },
+  "documentationUrl": "https://github.com/scarecrow-snow/SurfaceImpactFeedback/README.md",
+  "samples": [
+    {
+      "displayName": "SurfaceImpactFeedback Sample",
+      "description": "A sample demonstrating the usage of SurfaceImpactFeedback.",
+      "path": "Samples~/ExampleScene"
+    }
+  ]
+
+}

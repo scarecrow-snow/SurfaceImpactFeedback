@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 303f49694938db441a614941f35f2274, type: 3}
+  m_Name: Testing_LogSettings
+  m_EditorClassIdentifier: 
+  logLevel: 2
+  logCategories: -1
+  enableRuntimeLogLevelChange: 1
+  enableRuntimeCategoryChange: 1
+  logTimestamp: 0
+  logStackTrace: 0
+  useLogPrefix: 1
+  memoryCheckInterval: 1000
+  memoryWarningThreshold: 500
+  enableMemoryCheck: 1
+  enableVerboseLogging: 0
+  enablePerformanceLogging: 1
+  enableCacheStatistics: 1

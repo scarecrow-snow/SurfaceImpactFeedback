@@ -12,21 +12,21 @@ namespace SCLib_SurfaceImpactFeedback
         /// コンポーネント型からプール型へのマッピングキャッシュ
         /// リフレクション処理を1回だけ実行し、結果を保存
         /// </summary>
-        private static readonly Dictionary<Type, Type> poolTypeCache = new Dictionary<Type, Type>();
+        private static readonly Dictionary<Type, Type> poolTypeCache = new ();
         
         /// <summary>
         /// 型ごとのコンストラクタデリゲートキャッシュ
         /// コンパイル済みデリゲートによる高速インスタンス生成
         /// </summary>
-        private static readonly Dictionary<Type, Func<GameObject, bool, int, int, IEffectObjectPool>> constructorCache = 
-            new Dictionary<Type, Func<GameObject, bool, int, int, IEffectObjectPool>>();
+        private static readonly Dictionary<Type, Func<Transform, GameObject, bool, int, int, IEffectObjectPool>> constructorCache = 
+            new ();
         
         /// <summary>
         /// キャッシュヒット率の統計情報
         /// </summary>
         private static int cacheHits = 0;
         private static int cacheMisses = 0;
-        public static IEffectObjectPool Create(SpawnObjectEffect effect, bool collectionCheck = true, int defaultCapacity = 30, int maxSize = 50)
+        public static IEffectObjectPool Create(Transform parentTransform, SpawnObjectEffect effect, bool collectionCheck = true, int defaultCapacity = 30, int maxSize = 50)
         {
             if (effect == null)
             {
@@ -40,8 +40,9 @@ namespace SCLib_SurfaceImpactFeedback
 
             return effect.effectType switch
             {
-                EffectType.Particle => new ParticleObjectPool(effect.Prefab, collectionCheck, defaultCapacity, maxSize),
-                EffectType.Effect => CreateEffectPool(effect.Prefab, collectionCheck, defaultCapacity, maxSize),
+                EffectType.Particle => new ParticleObjectPool(parentTransform,effect.Prefab, collectionCheck, defaultCapacity, maxSize),
+                EffectType.Decal => CreateDecalPool(parentTransform, effect.Prefab, collectionCheck, defaultCapacity, maxSize),
+                EffectType.Effect => CreateEffectPool(parentTransform, effect.Prefab, collectionCheck, defaultCapacity, maxSize),
                 _ => throw new ArgumentException($"未対応のエフェクトタイプです: {effect.effectType}")
             };
         }
@@ -52,10 +53,10 @@ namespace SCLib_SurfaceImpactFeedback
         /// </summary>
         /// <param name="poolType">プール型</param>
         /// <returns>コンストラクタデリゲート</returns>
-        private static Func<GameObject, bool, int, int, IEffectObjectPool> CreateConstructorDelegate(Type poolType)
+        private static Func<Transform, GameObject, bool, int, int, IEffectObjectPool> CreateConstructorDelegate(Type poolType)
         {
             // コンストラクタのパラメータ型を定義
-            var constructorTypes = new[] { typeof(GameObject), typeof(bool), typeof(int), typeof(int) };
+            var constructorTypes = new[] {typeof(Transform), typeof(GameObject), typeof(bool), typeof(int), typeof(int) };
             var constructor = poolType.GetConstructor(constructorTypes);
             
             if (constructor == null)
@@ -64,18 +65,64 @@ namespace SCLib_SurfaceImpactFeedback
             }
 
             // Expression Treeでコンストラクタ呼び出しを作成
+            var param0 = Expression.Parameter(typeof(Transform), "parentTransform");
             var param1 = Expression.Parameter(typeof(GameObject), "prefab");
             var param2 = Expression.Parameter(typeof(bool), "collectionCheck");
             var param3 = Expression.Parameter(typeof(int), "defaultCapacity");
             var param4 = Expression.Parameter(typeof(int), "maxSize");
             
-            var newExpression = Expression.New(constructor, param1, param2, param3, param4);
+            var newExpression = Expression.New(constructor, param0, param1, param2, param3, param4);
             var castExpression = Expression.Convert(newExpression, typeof(IEffectObjectPool));
             
-            var lambda = Expression.Lambda<Func<GameObject, bool, int, int, IEffectObjectPool>>(
-                castExpression, param1, param2, param3, param4);
+            var lambda = Expression.Lambda<Func<Transform, GameObject, bool, int, int, IEffectObjectPool>>(
+                castExpression, param0, param1, param2, param3, param4);
             
             return lambda.Compile();
+        }
+
+        /// <summary>
+        /// デカールプールを作成する（動的型解決版）
+        /// プレハブのIEffectコンポーネントを自動検出してDynamicParentDecalObjectPoolを生成
+        /// </summary>
+        /// <param name="parentTransform">親Transform</param>
+        /// <param name="decalPrefab">デカールプレハブ</param>
+        /// <param name="collectionCheck">重複チェックを行うか</param>
+        /// <param name="defaultCapacity">初期プールサイズ</param>
+        /// <param name="maxSize">最大プールサイズ</param>
+        /// <returns>適切なデカールプール</returns>
+        /// <exception cref="ArgumentException">IEffectを実装したコンポーネントが見つからない場合</exception>
+        private static IEffectObjectPool CreateDecalPool(Transform parentTransform, GameObject decalPrefab, bool collectionCheck, int defaultCapacity, int maxSize)
+        {
+            // IEffect実装をチェック
+            if (decalPrefab.TryGetComponent<IEffect>(out var effectComponent))
+            {
+                var componentType = effectComponent.GetType();
+                
+                // キャッシュからコンストラクタデリゲートを取得
+                if (constructorCache.TryGetValue(componentType, out var cachedConstructor))
+                {
+                    cacheHits++;
+                    return cachedConstructor(parentTransform, decalPrefab, collectionCheck, defaultCapacity, maxSize);
+                }
+                
+                // キャッシュミス - 新しいデリゲートを作成
+                cacheMisses++;
+                
+                // DynamicParentDecalObjectPool<T>の型をキャッシュから取得または作成
+                if (!poolTypeCache.TryGetValue(componentType, out var poolType))
+                {
+                    poolType = typeof(DynamicParentDecalObjectPool<>).MakeGenericType(componentType);
+                    poolTypeCache[componentType] = poolType;
+                }
+                
+                // コンストラクタデリゲートを作成してキャッシュに保存
+                var constructorDelegate = CreateConstructorDelegate(poolType);
+                constructorCache[componentType] = constructorDelegate;
+                
+                return constructorDelegate(parentTransform, decalPrefab, collectionCheck, defaultCapacity, maxSize);
+            }
+
+            throw new ArgumentException($"プレハブ '{decalPrefab.name}' に IEffect を実装したコンポーネントが見つかりません");
         }
 
         /// <summary>
@@ -89,7 +136,7 @@ namespace SCLib_SurfaceImpactFeedback
         /// <param name="maxSize">最大プールサイズ</param>
         /// <returns>適切なエフェクトプール</returns>
         /// <exception cref="ArgumentException">IEffectを実装したコンポーネントが見つからない場合</exception>
-        private static IEffectObjectPool CreateEffectPool(GameObject effectPrefab, bool collectionCheck, int defaultCapacity, int maxSize)
+        private static IEffectObjectPool CreateEffectPool(Transform parentTransform, GameObject effectPrefab, bool collectionCheck, int defaultCapacity, int maxSize)
         {
             // IEffect実装をチェック
             if (effectPrefab.TryGetComponent<IEffect>(out var effectComponent))
@@ -100,7 +147,7 @@ namespace SCLib_SurfaceImpactFeedback
                 if (constructorCache.TryGetValue(componentType, out var cachedConstructor))
                 {
                     cacheHits++;
-                    return cachedConstructor(effectPrefab, collectionCheck, defaultCapacity, maxSize);
+                    return cachedConstructor(parentTransform, effectPrefab, collectionCheck, defaultCapacity, maxSize);
                 }
                 
                 // キャッシュミス - 新しいデリゲートを作成
@@ -117,7 +164,7 @@ namespace SCLib_SurfaceImpactFeedback
                 var constructorDelegate = CreateConstructorDelegate(poolType);
                 constructorCache[componentType] = constructorDelegate;
                 
-                return constructorDelegate(effectPrefab, collectionCheck, defaultCapacity, maxSize);
+                return constructorDelegate(parentTransform, effectPrefab, collectionCheck, defaultCapacity, maxSize);
             }
 
             throw new ArgumentException($"プレハブ '{effectPrefab.name}' に IEffect を実装したコンポーネントが見つかりません");

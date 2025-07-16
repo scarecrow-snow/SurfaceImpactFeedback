@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Cysharp.Threading.Tasks.Triggers;
 using UnityEngine;
 using UnityEngine.Pool;
 
@@ -14,6 +15,7 @@ namespace SCLib_SurfaceImpactFeedback
     /// <typeparam name="T">プールするオブジェクトのコンポーネント型</typeparam>
     public abstract class EffectObjectPoolBase<T> : IEffectObjectPool where T : Component
     {
+        protected readonly Transform parentTransform;
         /// <summary>
         /// エフェクトプレハブ
         /// </summary>
@@ -37,8 +39,9 @@ namespace SCLib_SurfaceImpactFeedback
         /// <param name="defaultCapacity">初期プールサイズ</param>
         /// <param name="maxSize">最大プールサイズ</param>
         /// <exception cref="ArgumentNullException">effectPrefabがnullの場合</exception>
-        protected EffectObjectPoolBase(GameObject effectPrefab, bool collectionCheck = true, int defaultCapacity = 30, int maxSize = 50)
+        protected EffectObjectPoolBase(Transform parentTransform,GameObject effectPrefab, bool collectionCheck = true, int defaultCapacity = 30, int maxSize = 50)
         {
+            this.parentTransform = parentTransform;
             this.effectPrefab = effectPrefab ?? throw new ArgumentNullException(nameof(effectPrefab));
 
             // プレハブに必要なコンポーネントが存在するかチェック
@@ -65,20 +68,22 @@ namespace SCLib_SurfaceImpactFeedback
         /// <param name="parameters">エフェクトパラメータ</param>
         /// <param name="ct">キャンセレーショントークン</param>
         /// <returns>エフェクト再生のタスク</returns>
-        public async UniTaskVoid PlayEffect(EffectParameters parameters, CancellationToken ct)
+        public virtual async UniTaskVoid PlayEffect(EffectParameters parameters, CancellationToken ct)
         {
             T effectObject = null;
-            
+
             try
             {
                 // プールからオブジェクトを取得
                 effectObject = objectPool.Get();
-                
+
                 // オブジェクトの位置と向きを設定
                 SetupTransform(effectObject, parameters);
-                
+
                 // 具体的なエフェクト処理を実行
                 await PlayEffectCore(effectObject, ct);
+                
+
             }
             catch (OperationCanceledException)
             {
@@ -97,6 +102,7 @@ namespace SCLib_SurfaceImpactFeedback
                 {
                     try
                     {
+                        effectObject.transform.SetParent(parentTransform);
                         effectObject.gameObject.SetActive(false);
                         objectPool.Release(effectObject);
                     }
@@ -154,13 +160,13 @@ namespace SCLib_SurfaceImpactFeedback
         /// </summary>
         /// <param name="effectObject">エフェクトオブジェクト</param>
         /// <param name="parameters">エフェクトパラメータ</param>
-        private void SetupTransform(T effectObject, EffectParameters parameters)
+        protected virtual void SetupTransform(T effectObject, EffectParameters parameters)
         {
             var transform = effectObject.transform;
             transform.position = parameters.Position;
             transform.forward = parameters.Forward;
             transform.rotation = Quaternion.Euler(transform.rotation.eulerAngles + parameters.Offset);
-            transform.SetParent(parameters.Parent);
+            transform.SetParent(parentTransform);
         }
 
         /// <summary>

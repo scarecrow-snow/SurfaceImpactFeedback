@@ -1,8 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 using SCLib_SurfaceImpactFeedback.Effects;
-using System;
 using SCLib_SurfaceImpactFeedback.TextureStrategy;
+using ZLinq;
+
 
 namespace SCLib_SurfaceImpactFeedback
 {
@@ -84,6 +85,13 @@ namespace SCLib_SurfaceImpactFeedback
         /// </summary>
         [SerializeField]
         private Surface DefaultSurface;
+        
+        /// <summary>
+        /// Renderer検索時に除外するレイヤーマスク
+        /// UIやエフェクト専用オブジェクトなど、表面検出から除外したいレイヤーを指定
+        /// </summary>
+        [SerializeField, Tooltip("Renderer検索時に除外するレイヤーマスク")]
+        private LayerMask excludedLayers = 0;
         
         /// <summary>
         /// エフェクトオブジェクトプールのキャッシュ
@@ -347,6 +355,16 @@ namespace SCLib_SurfaceImpactFeedback
 
             return strategy;
         }
+        
+        /// <summary>
+        /// 指定されたレイヤーが除外レイヤーマスクに含まれているかを判定する
+        /// </summary>
+        /// <param name="layer">判定するレイヤー</param>
+        /// <returns>除外対象の場合true、そうでなければfalse</returns>
+        private bool IsLayerExcluded(int layer)
+        {
+            return (excludedLayers.value & (1 << layer)) != 0;
+        }
 
         #endregion
 
@@ -392,9 +410,35 @@ namespace SCLib_SurfaceImpactFeedback
             }
             else
             {
-                // 対応するコンポーネントが見つからない場合はエラー
-                Debug.LogError($"{HitObject.name} has no valid texture strategy!");
-                return;
+                var renderers = HitObject.GetComponentsInChildren<Renderer>();
+                
+                if (renderers != null && renderers.Length > 0)
+                {
+                    Vector3 hitPosition = HitPoint;  // inパラメータをローカル変数にコピー
+                    var closestRenderer = renderers
+                        .AsValueEnumerable()
+                        .Where(r => !IsLayerExcluded(r.gameObject.layer))
+                        .OrderBy(r => (hitPosition - r.transform.position).sqrMagnitude)
+                        .FirstOrDefault();
+                    
+                    if (closestRenderer != null)
+                    {
+                        textureStrategy = GetRendererTextureStrategy(closestRenderer);
+                        HitObject = closestRenderer.gameObject;
+                    }
+                    else
+                    {
+                        // 除外レイヤーフィルター後にRendererが見つからない場合
+                        Debug.LogWarning($"{HitObject.name} の子オブジェクトに有効なRenderer（除外レイヤー以外）が見つかりません！除外レイヤー設定を確認してください。");
+                        return;
+                    }
+                }
+                else
+                {
+                    // 対応するコンポーネントが見つからない場合はwarning
+                    Debug.LogWarning($"{HitObject.name} has no valid texture strategy!");
+                    return;
+                }
             }
 
             // 衝突地点のテクスチャ情報を取得
@@ -403,7 +447,7 @@ namespace SCLib_SurfaceImpactFeedback
             {
                 // ヒット地点にテクスチャが見つからない場合はデフォルトサーフェスを使用
                 LogDebug($"No textures found at {HitPoint} on {HitObject.name}. Using default surface.", SurfaceImpactFeedbackLogCategory.Performance);
-                PlayEffectsForSurface(HitPoint, HitNormal, DefaultSurface, Impact);
+                PlayEffectsForSurface(HitObject, HitPoint, HitNormal, DefaultSurface, Impact);
                 return;
             }
             
@@ -418,7 +462,7 @@ namespace SCLib_SurfaceImpactFeedback
                     : DefaultSurface;
 
                 // 決定したサーフェスに基づいてエフェクトを実行
-                PlayEffectsForSurface(HitPoint, HitNormal, targetSurface, Impact);
+                PlayEffectsForSurface(HitObject, HitPoint, HitNormal, targetSurface, Impact);
             }
         }
         
@@ -430,7 +474,7 @@ namespace SCLib_SurfaceImpactFeedback
         /// <param name="HitNormal">エフェクト発生面の法線</param>
         /// <param name="surface">実行対象のサーフェス設定</param>
         /// <param name="impactType">インパクトタイプ</param>
-        private void PlayEffectsForSurface(in Vector3 HitPoint, in Vector3 HitNormal, Surface surface, ImpactType impactType)
+        private void PlayEffectsForSurface(GameObject obj, in Vector3 HitPoint, in Vector3 HitNormal, Surface surface, ImpactType impactType)
         {
             // サーフェスに登録されたエフェクト設定を順次チェック
             for (int i = 0; i < surface.ImpactTypeEffects.Count; i++)
@@ -440,7 +484,7 @@ namespace SCLib_SurfaceImpactFeedback
                 // インパクトタイプが一致する場合のみエフェクトを実行
                 if (typeEffect.ImpactType == impactType)
                 {
-                    PlayEffects(HitPoint, HitNormal, typeEffect.SurfaceEffect);
+                    PlayEffects(obj, HitPoint, HitNormal, typeEffect.SurfaceEffect);
                 }
             }
         }
@@ -452,7 +496,7 @@ namespace SCLib_SurfaceImpactFeedback
         /// <param name="HitPoint">エフェクト発生ポイント</param>
         /// <param name="HitNormal">エフェクト発生面の法線</param>
         /// <param name="SurfaceEffect">実行するサーフェスエフェクト設定</param>
-        private void PlayEffects(in Vector3 HitPoint, in Vector3 HitNormal, SurfaceEffect SurfaceEffect)
+        private void PlayEffects(GameObject obj, in Vector3 HitPoint, in Vector3 HitNormal, SurfaceEffect SurfaceEffect)
         {
             // パーティクル・デカールエフェクトの処理
             for (int i = 0; i < SurfaceEffect.SpawnObjectEffects.Count; i++)
@@ -465,7 +509,7 @@ namespace SCLib_SurfaceImpactFeedback
                 // オブジェクトプールを取得または新規作成（遅延初期化 + 1回のハッシュ検索で最適化）
                 if (!ObjectPools.TryGetValue(spawnObjectEffect.Prefab, out var pool))
                 {
-                    pool = EffectPoolFactory.Create(spawnObjectEffect);
+                    pool = EffectPoolFactory.Create(transform, spawnObjectEffect);
                     ObjectPools.Add(spawnObjectEffect.Prefab, pool);
                     poolCreationCount++;
                     
@@ -475,9 +519,10 @@ namespace SCLib_SurfaceImpactFeedback
                 
                 totalEffectCount++;
                 
+                
                 // 定期的なメモリ監視
                 PerformMemoryCheck();
-
+                
                 // エフェクトの向きを法線ベクトルに設定
                 Vector3 forward = HitNormal;
                 Vector3 offset = Vector3.zero;
@@ -497,7 +542,7 @@ namespace SCLib_SurfaceImpactFeedback
                     HitPoint + HitNormal * 0.001f,
                     forward,
                     offset,
-                    transform
+                    obj.transform
                 );
                 pool.PlayEffect(effectParameters, destroyCancellationToken).Forget();
             }

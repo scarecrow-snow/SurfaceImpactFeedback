@@ -17,8 +17,8 @@ namespace SCLib_SurfaceImpactFeedback
         /// <param name="collectionCheck">重複チェックを行うか</param>
         /// <param name="defaultCapacity">初期プールサイズ</param>
         /// <param name="maxSize">最大プールサイズ</param>
-        public ParticleObjectPool(GameObject particlePrefab, bool collectionCheck = true, int defaultCapacity = 30, int maxSize = 50)
-            : base(particlePrefab, collectionCheck, defaultCapacity, maxSize)
+        public ParticleObjectPool(Transform parentTransform, GameObject particlePrefab, bool collectionCheck = true, int defaultCapacity = 30, int maxSize = 50)
+            : base(parentTransform,particlePrefab, collectionCheck, defaultCapacity, maxSize)
         {
         }
 

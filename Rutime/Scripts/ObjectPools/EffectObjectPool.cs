@@ -21,8 +21,8 @@ namespace SCLib_SurfaceImpactFeedback
         /// <param name="defaultCapacity">初期プールサイズ</param>
         /// <param name="maxSize">最大プールサイズ</param>
         /// <exception cref="ArgumentException">プレハブにIEffectを実装したコンポーネントが存在しない場合</exception>
-        public EffectObjectPool(GameObject decalPrefab, bool collectionCheck = true, int defaultCapacity = 30, int maxSize = 50)
-            : base(decalPrefab, collectionCheck, defaultCapacity, maxSize)
+        public EffectObjectPool(Transform parentTransform, GameObject decalPrefab, bool collectionCheck = true, int defaultCapacity = 30, int maxSize = 50)
+            : base(parentTransform, decalPrefab, collectionCheck, defaultCapacity, maxSize)
         {
             // IEffectインターフェースの実装確認
             if (!decalPrefab.TryGetComponent<IEffect>(out _))

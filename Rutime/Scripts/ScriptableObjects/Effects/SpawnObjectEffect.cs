@@ -18,6 +18,7 @@ namespace SCLib_SurfaceImpactFeedback.Effects
     public enum EffectType
     {
         Particle,
+        Decal,
         Effect,
     }
 }

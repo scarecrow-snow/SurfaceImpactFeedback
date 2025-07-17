@@ -92,7 +92,10 @@ namespace SCLib_SurfaceImpactFeedback
         /// </summary>
         [SerializeField, Tooltip("Renderer検索時に除外するレイヤーマスク")]
         private LayerMask excludedLayers = 0;
-        
+
+        [SerializeField,Tooltip("エフェクトの親となるTransform。nullの場合はRoot。SurfaceImpactFeedbackは指定しないこと")]
+        private Transform effectsParent;
+
         /// <summary>
         /// エフェクトオブジェクトプールのキャッシュ
         /// プレハブごとにオブジェクトプールを管理し、パフォーマンスを最適化
@@ -509,7 +512,7 @@ namespace SCLib_SurfaceImpactFeedback
                 // オブジェクトプールを取得または新規作成（遅延初期化 + 1回のハッシュ検索で最適化）
                 if (!ObjectPools.TryGetValue(spawnObjectEffect.Prefab, out var pool))
                 {
-                    pool = EffectPoolFactory.Create(transform, spawnObjectEffect);
+                    pool = EffectPoolFactory.Create(effectsParent, spawnObjectEffect);
                     ObjectPools.Add(spawnObjectEffect.Prefab, pool);
                     poolCreationCount++;
                     

@@ -1,6 +1,6 @@
 {
   "name": "com.scarecrow.surface_impact_feedback",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "displayName": "SurfaceImpactFeedback_SC_Library",
   "description": "A framework for playing effects (particles, decals, audio) at impact points based on hit information. Includes surface-based mapping. ",
   "keywords": [

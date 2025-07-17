@@ -55,7 +55,6 @@ namespace SCLib_SurfaceImpactFeedback
         public override async UniTaskVoid PlayEffect(EffectParameters parameters, CancellationToken ct)
         {
             T effectObject = null;
-            bool parentDestroyed = false;
 
             try
             {
@@ -68,26 +67,11 @@ namespace SCLib_SurfaceImpactFeedback
                 // 親オブジェクトが存在する場合は、そのライフサイクルを監視（パフォーマンス最適化版）
                 if (parameters.Parent != null && parameters.Parent.gameObject != null)
                 {
-                    // 親オブジェクトが既に破棄されている場合は早期終了
-                    if (parameters.Parent.gameObject == null)
-                    {
-                        parentDestroyed = true;
-                        SurfaceImpactFeedback.LogDebug($"親オブジェクトが既に破棄されているため、デカールエフェクトをスキップしました: {typeof(T).Name}", SurfaceImpactFeedbackLogCategory.Pool);
-                        return;
-                    }
-
                     var destroyTask = parameters.Parent.OnDestroyAsync();
                     var effectTask = PlayEffectCore(effectObject, ct);
                     
                     // 親の破棄とエフェクト完了のどちらかが先に終了するまで待機
-                    var winArgumentIndex = await UniTask.WhenAny(destroyTask, effectTask);
-                    
-                    // 親が破棄された場合（winArgumentIndex == 0）
-                    if (winArgumentIndex == 0)
-                    {
-                        parentDestroyed = true;
-                        SurfaceImpactFeedback.LogDebug($"親オブジェクトの破棄により、デカールエフェクトを中断しました: {typeof(T).Name}", SurfaceImpactFeedbackLogCategory.Pool);
-                    }
+                    await UniTask.WhenAny(destroyTask, effectTask);
                 }
                 else
                 {
@@ -107,39 +91,27 @@ namespace SCLib_SurfaceImpactFeedback
             }
             finally
             {
-                // オブジェクトをプールに戻す（親が破棄されていても安全に処理）
+                // オブジェクトをプールに戻す
                 if (effectObject != null)
                 {
                     try
                     {
-                        // 親が破棄されている場合は、システムの親に戻す
-                        var targetParent = parentDestroyed ? parentTransform : parentTransform;
-                        
-                        // オブジェクトが有効な場合のみ処理
-                        if (effectObject != null && effectObject.gameObject != null)
+                        if (parentTransform != null || !parentTransform.Equals(null))
                         {
-                            effectObject.transform.SetParent(targetParent);
-                            effectObject.gameObject.SetActive(false);
-                            objectPool.Release(effectObject);
+                            effectObject.transform.SetParent(parentTransform);
                         }
+                        else
+                        {
+                            effectObject.transform.SetParent(null);
+                        }
+                        
+                        effectObject.gameObject.SetActive(false);
+                        objectPool.Release(effectObject);
                     }
                     catch (Exception ex)
                     {
                         SurfaceImpactFeedback.LogError($"オブジェクトプールへの返却中にエラーが発生しました: {ex.Message}", SurfaceImpactFeedbackLogCategory.Pool);
-                        
-                        // プール返却に失敗した場合は直接破棄
-                        try
-                        {
-                            if (effectObject != null && effectObject.gameObject != null)
-                            {
-                                GameObject.Destroy(effectObject.gameObject);
-                                SurfaceImpactFeedback.LogWarning($"プール返却失敗のため、オブジェクトを直接破棄しました: {typeof(T).Name}", SurfaceImpactFeedbackLogCategory.Pool);
-                            }
-                        }
-                        catch (Exception destroyEx)
-                        {
-                            SurfaceImpactFeedback.LogError($"オブジェクトの破棄中にもエラーが発生しました: {destroyEx.Message}", SurfaceImpactFeedbackLogCategory.Pool);
-                        }
+                        GameObject.Destroy(effectObject.gameObject);
                     }
                 }
             }

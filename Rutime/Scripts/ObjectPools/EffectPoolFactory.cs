@@ -1,5 +1,6 @@
 using UnityEngine;
 using SCLib_SurfaceImpactFeedback.Effects;
+using SCLib_SurfaceImpactFeedback.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
@@ -193,7 +194,7 @@ namespace SCLib_SurfaceImpactFeedback
         {
             if (cacheMisses > 0 || cacheHits > 0)
             {
-                SurfaceImpactFeedback.LogDebug($"EffectPoolFactory - {GetCacheStatistics()}", SurfaceImpactFeedbackLogCategory.Cache);
+                SurfaceImpactLogger.LogDebug($"EffectPoolFactory - {GetCacheStatistics()}", SurfaceImpactFeedbackLogCategory.Cache);
             }
         }
         
@@ -206,7 +207,7 @@ namespace SCLib_SurfaceImpactFeedback
             constructorCache.Clear();
             cacheHits = 0;
             cacheMisses = 0;
-            SurfaceImpactFeedback.LogInfo("EffectPoolFactory - キャッシュをクリアしました", SurfaceImpactFeedbackLogCategory.Cache);
+            SurfaceImpactLogger.LogInfo("EffectPoolFactory - キャッシュをクリアしました", SurfaceImpactFeedbackLogCategory.Cache);
         }
     }
 } 

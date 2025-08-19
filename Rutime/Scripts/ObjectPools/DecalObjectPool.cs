@@ -3,6 +3,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using Cysharp.Threading.Tasks.Triggers;
 using UnityEngine;
+using SCLib_SurfaceImpactFeedback.Utilities;
 
 namespace SCLib_SurfaceImpactFeedback
 {
@@ -82,12 +83,12 @@ namespace SCLib_SurfaceImpactFeedback
             catch (OperationCanceledException)
             {
                 // キャンセルされた場合はログを出力
-                SurfaceImpactFeedback.LogDebug($"デカールエフェクト再生がキャンセルされました: {typeof(T).Name}", SurfaceImpactFeedbackLogCategory.Performance);
+                SurfaceImpactLogger.LogDebug($"デカールエフェクト再生がキャンセルされました: {typeof(T).Name}", SurfaceImpactFeedbackLogCategory.Performance);
             }
             catch (Exception ex)
             {
                 // その他のエラーをログに出力
-                SurfaceImpactFeedback.LogError($"デカールエフェクト再生中にエラーが発生しました: {ex.Message}", SurfaceImpactFeedbackLogCategory.Pool);
+                SurfaceImpactLogger.LogError($"デカールエフェクト再生中にエラーが発生しました: {ex.Message}", SurfaceImpactFeedbackLogCategory.Pool);
             }
             finally
             {
@@ -110,7 +111,7 @@ namespace SCLib_SurfaceImpactFeedback
                     }
                     catch (Exception ex)
                     {
-                        SurfaceImpactFeedback.LogError($"オブジェクトプールへの返却中にエラーが発生しました: {ex.Message}", SurfaceImpactFeedbackLogCategory.Pool);
+                        SurfaceImpactLogger.LogError($"オブジェクトプールへの返却中にエラーが発生しました: {ex.Message}", SurfaceImpactFeedbackLogCategory.Pool);
                         GameObject.Destroy(effectObject.gameObject);
                     }
                 }
@@ -127,7 +128,7 @@ namespace SCLib_SurfaceImpactFeedback
         {
             if (effectObject == null || effectObject.gameObject == null)
             {
-                SurfaceImpactFeedback.LogWarning("SetupTransform: effectObjectがnullまたは無効です", SurfaceImpactFeedbackLogCategory.Pool);
+                SurfaceImpactLogger.LogWarning("SetupTransform: effectObjectがnullまたは無効です", SurfaceImpactFeedbackLogCategory.Pool);
                 return;
             }
 
@@ -145,7 +146,7 @@ namespace SCLib_SurfaceImpactFeedback
                 
             transform.SetParent(targetParent);
             
-            SurfaceImpactFeedback.LogDebug($"デカールオブジェクトを親'{targetParent?.name}'に設定しました", SurfaceImpactFeedbackLogCategory.Pool);
+            SurfaceImpactLogger.LogDebug($"デカールオブジェクトを親'{targetParent?.name}'に設定しました", SurfaceImpactFeedbackLogCategory.Pool);
         }
 
     }

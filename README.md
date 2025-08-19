@@ -19,6 +19,7 @@ Unity環境でのサーフェス固有のインパクト（衝撃）エフェク
   - R3 1.3.0 (Reactive Extensions)
   - ObservableCollections (コレクション監視)
   - LitMotion (アニメーション)
+  - ZLinq 1.5.1 (ゼロアロケーションLINQ最適化)
   - Burst (高性能計算)
 
 ## クイックスタート
@@ -26,14 +27,32 @@ Unity環境でのサーフェス固有のインパクト（衝撃）エフェク
 ### 1. 基本的な使用方法
 
 ```csharp
-// インパクト処理の実行
-SurfaceImpactFeedback.HandleImpact(
-    hitObject,      // ヒットしたGameObject
-    hitPoint,       // ヒットポイント
-    hitNormal,      // ヒット時の法線
-    impactType,     // インパクトタイプ
-    triangleIndex   // トライアングルインデックス（オプション）
-);
+// Pure C#クラスとしてのSurfaceImpactFeedbackの初期化と使用
+public class MyComponent : MonoBehaviour
+{
+    [SerializeField] private SurfaceImpactConfiguration config;
+    [SerializeField] private Transform parentTransform;
+    
+    private SurfaceImpactFeedback surfaceImpactFeedback;
+    
+    void Awake()
+    {
+        // コンストラクタ注入によるシステム初期化
+        surfaceImpactFeedback = new SurfaceImpactFeedback(config, parentTransform, null);
+    }
+    
+    void OnDestroy()
+    {
+        // IDisposableパターンでリソース解放
+        surfaceImpactFeedback?.Dispose();
+    }
+    
+    void HandleImpact(GameObject hitObject, Vector3 hitPoint, Vector3 hitNormal, ImpactType impactType)
+    {
+        // インパクト処理の実行
+        surfaceImpactFeedback.HandleImpact(hitObject, hitPoint, hitNormal, impactType);
+    }
+}
 ```
 
 ### 2. マウスクリックでのインパクト実装例
@@ -41,7 +60,23 @@ SurfaceImpactFeedback.HandleImpact(
 ```csharp
 public class ClickImpact : MonoBehaviour
 {
-    [SerializeField] private SurfaceImpactFeedback.ImpactType impactType;
+    [SerializeField] private ImpactType impactType;
+    [SerializeField] private SurfaceImpactConfiguration config;
+    [SerializeField] private Transform parentTransform;
+    
+    private SurfaceImpactFeedback surfaceImpactFeedback;
+    
+    void Awake()
+    {
+        // Pure C#クラスの初期化（MonoBehaviourに依存しない設計）
+        surfaceImpactFeedback = new SurfaceImpactFeedback(config, parentTransform, null);
+    }
+    
+    void OnDestroy()
+    {
+        // リソース解放
+        surfaceImpactFeedback?.Dispose();
+    }
     
     void Update()
     {
@@ -50,7 +85,7 @@ public class ClickImpact : MonoBehaviour
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             if (Physics.Raycast(ray, out RaycastHit hit))
             {
-                SurfaceImpactFeedback.HandleImpact(
+                surfaceImpactFeedback.HandleImpact(
                     hit.collider.gameObject, 
                     hit.point, 
                     hit.normal, 
@@ -64,7 +99,7 @@ public class ClickImpact : MonoBehaviour
 
 ### 3. デモシーンの実行
 
-1. `Assets/Demo/DemoScene.unity`を開く
+1. `Assets/SurfaceImpactFeedback/Samples/ExampleScene/DemoScene.unity`を開く
 2. プレイモードでマウスクリックによるインパクトエフェクトを確認
 
 ## アーキテクチャ
@@ -72,11 +107,13 @@ public class ClickImpact : MonoBehaviour
 ### 核となるクラス
 
 #### SurfaceImpactFeedback.cs
-システムの中核となるシングルトンクラス
+システムの中核となるPure C#クラス（非MonoBehaviour設計）
 - `HandleImpact()`: インパクト処理の統括
 - `GetTerrainTextureStrategy()`: Terrain用テクスチャストラテジー取得
-- `GetRendererTextureStrategy()`: Renderer用テクスチャストラテジー取得
+- `GetRendererTextureStrategy()`: Renderer用テクスチャストラテジー取得  
 - `PlayEffects()`: エフェクトの再生処理
+- **コンストラクタ注入**: 設定とサウンドシステムの外部化
+- **IDisposableパターン**: 適切なリソース管理
 
 #### オブジェクトプーリングシステム
 - `EffectObjectPoolBase<T>`: エフェクトプールの基底クラス
@@ -94,27 +131,51 @@ public class ClickImpact : MonoBehaviour
 ### 1. ファクトリーパターン
 ```csharp
 // 異なるエフェクトタイプのオブジェクトプール生成
-var pool = EffectPoolFactory.Create(spawnObjectEffect, isUseLimitedLifetime);
+var pool = EffectPoolFactory.Create(parentTransform, spawnObjectEffect);
 ```
 
 ### 2. ストラテジーパターン
 ```csharp
 // TerrainとRendererで異なるテクスチャ取得方法
-var strategy = SurfaceImpactFeedback.GetTerrainTextureStrategy(terrain);
-var textureIndex = strategy.GetTextureIndex(hitPoint, triangleIndex);
+var strategy = GetTerrainTextureStrategy(terrain);
+var textures = strategy.GetTextures(hitPoint, triangleIndex);
 ```
 
-### 3. インターフェース抽象化
+### 3. 依存性注入パターン
+```csharp
+// コンストラクタ注入による設定の外部化
+public SurfaceImpactFeedback(
+    SurfaceImpactConfiguration configuration, 
+    Transform parent, 
+    IImpactSound soundSystem)
+{
+    this.configuration = configuration;
+    this.parentTransform = parent;
+    this.impactSound = soundSystem;
+}
+```
+
+### 4. インターフェース抽象化
 ```csharp
 // 任意のエフェクト実装に対応
 public class CustomEffect : MonoBehaviour, IEffect
 {
-    public async UniTask PlayEffect(CancellationToken ct)
+    public async UniTask PlayEffect(EffectParameters parameters, CancellationToken ct)
     {
         // カスタムエフェクト処理
         await CustomFadeLogic(ct);
     }
 }
+```
+
+### 5. ZLinqによるLINQ最適化
+```csharp
+// ゼロアロケーションLINQ処理による高速化
+var closestRenderer = renderers
+    .AsValueEnumerable()  // ZLinqによるゼロアロケーション最適化
+    .Where(r => !IsLayerExcluded(r.gameObject.layer))
+    .OrderBy(r => (hitPosition - r.transform.position).sqrMagnitude)
+    .FirstOrDefault();
 ```
 
 ## 設定
@@ -202,10 +263,25 @@ var pool = new EffectObjectPool<SimpleDecal>(prefab);
 
 ## パフォーマンス最適化
 
+### ZLinqによるLINQ最適化
+- **ゼロアロケーション**: `AsValueEnumerable()`によるメモリ割り当て削減
+- **高速LINQ処理**: 従来のSystem.Linqより高性能な処理
+- **構造体ベース**: ValueEnumerableによるヒープアロケーション回避
+
+```csharp
+// ZLinq使用例：最近のRendererを効率的に検索
+var closestRenderer = renderers
+    .AsValueEnumerable()  // ゼロアロケーション開始
+    .Where(r => !IsLayerExcluded(r.gameObject.layer))
+    .OrderBy(r => (hitPosition - r.transform.position).sqrMagnitude)
+    .FirstOrDefault();
+```
+
 ### メモリ管理
 - **統一されたオブジェクトプーリング**: 効率的なメモリ再利用
 - **ガベージコレクション削減**: エフェクトオブジェクトの使い回し
 - **構造体パラメータ**: `EffectParameters`構造体でヒープアロケーション回避
+- **辞書キャッシュ**: O(1)テクスチャ検索による高速化
 
 ### 非同期処理
 - **UniTask統合**: 高性能な非同期処理でメインスレッドのブロック回避
@@ -213,6 +289,7 @@ var pool = new EffectObjectPool<SimpleDecal>(prefab);
 - **並列エフェクト処理**: 複数エフェクトの同時実行サポート
 
 ### システム設計による最適化
+- **Pure C#設計**: MonoBehaviour依存の排除による軽量化
 - **基底クラス継承**: 共通処理の統一で実行効率向上
 - **インターフェース抽象化**: 仮想関数呼び出しの最適化
 - **ファクトリーパターン**: オブジェクト生成のオーバーヘッド削減
@@ -255,6 +332,7 @@ Assets/Surface Manager/
 - System.ComponentModel.Annotations 5.0.0
 - System.Runtime.CompilerServices.Unsafe 6.0.0
 - System.Threading.Channels 8.0.0
+- ZLinq 1.5.1
 
 ## リファクタリング履歴
 

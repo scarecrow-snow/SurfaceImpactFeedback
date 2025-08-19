@@ -1,9 +1,9 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Cysharp.Threading.Tasks.Triggers;
 using UnityEngine;
 using UnityEngine.Pool;
+using SCLib_SurfaceImpactFeedback.Utilities;
 
 namespace SCLib_SurfaceImpactFeedback
 {
@@ -88,12 +88,12 @@ namespace SCLib_SurfaceImpactFeedback
             catch (OperationCanceledException)
             {
                 // キャンセルされた場合はログを出力
-                SurfaceImpactFeedback.LogDebug($"エフェクト再生がキャンセルされました: {typeof(T).Name}", SurfaceImpactFeedbackLogCategory.Performance);
+                SurfaceImpactLogger.LogDebug($"エフェクト再生がキャンセルされました: {typeof(T).Name}", SurfaceImpactFeedbackLogCategory.Performance);
             }
             catch (Exception ex)
             {
                 // その他のエラーをログに出力
-                SurfaceImpactFeedback.LogError($"エフェクト再生中にエラーが発生しました: {ex.Message}", SurfaceImpactFeedbackLogCategory.Pool);
+                SurfaceImpactLogger.LogError($"エフェクト再生中にエラーが発生しました: {ex.Message}", SurfaceImpactFeedbackLogCategory.Pool);
             }
             finally
             {
@@ -108,7 +108,7 @@ namespace SCLib_SurfaceImpactFeedback
                     }
                     catch (Exception ex)
                     {
-                        SurfaceImpactFeedback.LogError($"オブジェクトプールへの返却中にエラーが発生しました: {ex.Message}", SurfaceImpactFeedbackLogCategory.Pool);
+                        SurfaceImpactLogger.LogError($"オブジェクトプールへの返却中にエラーが発生しました: {ex.Message}", SurfaceImpactFeedbackLogCategory.Pool);
                     }
                 }
             }
@@ -189,11 +189,11 @@ namespace SCLib_SurfaceImpactFeedback
             {
                 // ObjectPoolの破棄 - プール内のすべてのオブジェクトを破棄
                 objectPool?.Dispose();
-                SurfaceImpactFeedback.LogInfo($"{GetType().Name} - プール破棄完了: {effectPrefab?.name}", SurfaceImpactFeedbackLogCategory.Pool);
+                SurfaceImpactLogger.LogInfo($"{GetType().Name} - プール破棄完了: {effectPrefab?.name}", SurfaceImpactFeedbackLogCategory.Pool);
             }
             catch (Exception ex)
             {
-                SurfaceImpactFeedback.LogError($"{GetType().Name} - プール破棄中にエラーが発生: {ex.Message}", SurfaceImpactFeedbackLogCategory.Pool);
+                SurfaceImpactLogger.LogError($"{GetType().Name} - プール破棄中にエラーが発生: {ex.Message}", SurfaceImpactFeedbackLogCategory.Pool);
             }
             finally
             {
@@ -208,7 +208,7 @@ namespace SCLib_SurfaceImpactFeedback
         {
             if (!disposed)
             {
-                SurfaceImpactFeedback.LogWarning($"{GetType().Name} - Dispose()が呼ばれずにファイナライザが実行されました。メモリリークの可能性があります。", SurfaceImpactFeedbackLogCategory.Pool);
+                SurfaceImpactLogger.LogWarning($"{GetType().Name} - Dispose()が呼ばれずにファイナライザが実行されました。メモリリークの可能性があります。", SurfaceImpactFeedbackLogCategory.Pool);
                 Dispose();
             }
         }

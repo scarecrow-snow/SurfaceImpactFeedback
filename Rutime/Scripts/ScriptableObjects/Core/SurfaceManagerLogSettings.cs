@@ -1,4 +1,5 @@
 using UnityEngine;
+using SCLib_SurfaceImpactFeedback.Utilities;
 
 namespace SCLib_SurfaceImpactFeedback
 {

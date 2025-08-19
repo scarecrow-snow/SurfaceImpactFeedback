@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1f294a6500d84e40ab31a4d93c30595, type: 3}
+  m_Name: SurfaceImpactConfiguration
+  m_EditorClassIdentifier: 
+  surfaces:
+  - Albedo: {fileID: 2800000, guid: bc19c3279968a4cd7ba8bbc70af1138b, type: 3}
+    Surface: {fileID: 11400000, guid: 8343835ccd22c74459c16d3725986bc9, type: 2}
+  - Albedo: {fileID: 2800000, guid: c39fd29bb8cb5c74c8a64dd56e76b20b, type: 3}
+    Surface: {fileID: 11400000, guid: 030967a6a7673a9428673feefc25d504, type: 2}
+  defaultSurface: {fileID: 11400000, guid: 8343835ccd22c74459c16d3725986bc9, type: 2}
+  excludedLayers:
+    serializedVersion: 2
+    m_Bits: 550
+  logSettings: {fileID: 11400000, guid: cbea5872d3682f946b41e72b200b996f, type: 2}

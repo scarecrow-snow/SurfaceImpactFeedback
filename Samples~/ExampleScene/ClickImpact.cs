@@ -6,6 +6,21 @@ using UnityEngine;
 public class ClickImpact : MonoBehaviour
 {
     [SerializeField] ImpactType impactType;
+    [SerializeField] SurfaceImpactConfiguration config;
+    [SerializeField] Transform parentTransform;
+
+    private SurfaceImpactFeedback surfaceImpactFeedback;
+
+    void Awake()
+    {
+        surfaceImpactFeedback = new SurfaceImpactFeedback(config, parentTransform, null);
+    }
+
+    void OnDestroy()
+    {
+        surfaceImpactFeedback?.Dispose();
+        surfaceImpactFeedback = null;
+    }
     void Update()
     {
         
@@ -23,7 +38,7 @@ public class ClickImpact : MonoBehaviour
             if (Physics.Raycast(ray, out hit))
             {
                 // ヒットした情報からインパクトエフェクトを発生させる
-                SurfaceImpactFeedback.Instance.HandleImpact(hit.collider.gameObject, hit.point, hit.normal, impactType);
+                surfaceImpactFeedback.HandleImpact(hit.collider.gameObject, hit.point, hit.normal, impactType);
             }
         }
     }

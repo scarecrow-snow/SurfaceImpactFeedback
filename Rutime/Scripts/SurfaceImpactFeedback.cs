@@ -464,7 +464,7 @@ namespace SCLib_SurfaceImpactFeedback
                     HitPoint + HitNormal * 0.001f,
                     forward,
                     offset,
-                    obj.transform
+                    obj?.transform
                 );
                 pool.PlayEffect(effectParameters, cts.Token).Forget();
             }

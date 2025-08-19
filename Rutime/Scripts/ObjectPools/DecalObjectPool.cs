@@ -97,7 +97,7 @@ namespace SCLib_SurfaceImpactFeedback
                 {
                     try
                     {
-                        if (parentTransform != null || !parentTransform.Equals(null))
+                        if (parentTransform != null && !parentTransform.Equals(null))
                         {
                             effectObject.transform.SetParent(parentTransform);
                         }
@@ -144,7 +144,15 @@ namespace SCLib_SurfaceImpactFeedback
                 ? parameters.Parent 
                 : parentTransform;
                 
-            transform.SetParent(targetParent);
+            // 親がnullの場合も安全に処理
+            if (targetParent != null && !targetParent.Equals(null))
+            {
+                transform.SetParent(targetParent);
+            }
+            else
+            {
+                transform.SetParent(null);
+            }
             
             SurfaceImpactLogger.LogDebug($"デカールオブジェクトを親'{targetParent?.name}'に設定しました", SurfaceImpactFeedbackLogCategory.Pool);
         }

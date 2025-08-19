@@ -49,7 +49,9 @@ namespace SCLib_SurfaceImpactFeedback
         {
             await UniTask.Delay(TimeSpan.FromSeconds(visibleDuration), cancellationToken: ct);
             await LMotion.Create(transform.localScale, Vector3.zero, fadeDuration)
-                .BindToLocalScale(transform).ToUniTask(ct);
+                .BindToLocalScale(transform)
+                .AddTo(gameObject)
+                .ToUniTask(ct);
         }
     }
 }

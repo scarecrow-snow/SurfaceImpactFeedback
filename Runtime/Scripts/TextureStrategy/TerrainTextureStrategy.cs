@@ -53,11 +53,11 @@ namespace SCLib_SurfaceImpactFeedback.TextureStrategy
         /// 指定位置のTerrainテクスチャ情報を取得します
         /// 
         /// Terrainのアルファマップから各テクスチャレイヤーの重みを計算し、
-        /// 重みが0より大きいテクスチャのみを返します。
+        /// 最も重みの高いテクスチャのみを返します（エフェクト重複防止）。
         /// </summary>
         /// <param name="hitPoint">ヒットポイントの世界座標</param>
         /// <param name="triangleIndex">使用されません（Terrain用）</param>
-        /// <returns>重みを持つテクスチャのリスト</returns>
+        /// <returns>最大重みを持つテクスチャのリスト（最大1個）</returns>
         public List<TextureAlpha> GetTextures(Vector3 hitPoint, int triangleIndex = 0)
         {
             // 世界座標をTerrain相対座標に変換
@@ -80,14 +80,24 @@ namespace SCLib_SurfaceImpactFeedback.TextureStrategy
             // 結果リストをクリア（リスト再利用でGC削減）
             _workTextures.Clear();
             
-            // 各テクスチャレイヤーの重みをチェック
+            // 最大重みのテクスチャを見つける（エフェクト重複を防ぐため）
+            float maxWeight = 0f;
+            int maxWeightIndex = -1;
+            
             for (int i = 0; i < alphaMap.Length; i++)
             {
-                // 重みが0より大きい場合のみリストに追加
-                if (alphaMap[0, 0, i] > 0)
+                float weight = alphaMap[0, 0, i];
+                if (weight > maxWeight)
                 {
-                    _workTextures.Add(new TextureAlpha(alphaMap[0, 0, i], _terrain.terrainData.terrainLayers[i].diffuseTexture));
+                    maxWeight = weight;
+                    maxWeightIndex = i;
                 }
+            }
+            
+            // 最大重みのテクスチャのみをリストに追加（重複エフェクト防止）
+            if (maxWeightIndex >= 0 && maxWeight > 0)
+            {
+                _workTextures.Add(new TextureAlpha(maxWeight, _terrain.terrainData.terrainLayers[maxWeightIndex].diffuseTexture));
             }
 
             return _workTextures;

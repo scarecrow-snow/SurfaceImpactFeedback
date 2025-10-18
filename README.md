@@ -395,7 +395,7 @@ Assets/Surface Manager/
 - **LitMotion依存の削除**: SimpleDecalをUniTaskベースの軽量実装に変更
 - **RendererTextureStrategy強化**: 子オブジェクトのRenderer検索に対応
 - **エラーハンドリング改善**: より詳細なスタックトレースと内部例外情報の出力
-- **Burstコンパイルエラー解消**: 外部ライブラリ依存を削減し安定性向上
+
 
 #### 達成された成果
 - **依存関係削減**: LitMotionへの依存を削除し、プロジェクトの軽量化

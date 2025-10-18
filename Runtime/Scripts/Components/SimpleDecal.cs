@@ -1,9 +1,6 @@
 using System;
-
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using LitMotion;
-using LitMotion.Extensions;
 using UnityEngine;
 
 namespace SCLib_SurfaceImpactFeedback
@@ -11,6 +8,7 @@ namespace SCLib_SurfaceImpactFeedback
     /// <summary>
     /// シンプルなスケールフェードアウト機能を持つデカール
     /// IEffectインターフェースを実装し、他のエフェクトシステムとの互換性を提供
+    /// LitMotionに依存せず、UniTaskベースの軽量なフェードアウトを実装
     /// </summary>
     public class SimpleDecal : MonoBehaviour, IEffect
     {
@@ -41,17 +39,32 @@ namespace SCLib_SurfaceImpactFeedback
 
         /// <summary>
         /// デカールのフェードアウト処理
-        /// 指定時間表示後、スケールをゼロにしてフェードアウトする
+        /// 指定時間表示後、スケールを線形補間でゼロにしてフェードアウトする
         /// </summary>
         /// <param name="ct">キャンセレーショントークン</param>
         /// <returns>フェードアウト処理のタスク</returns>
         public async UniTask FadeOutDecal(CancellationToken ct)
         {
+            // 指定時間表示を維持
             await UniTask.Delay(TimeSpan.FromSeconds(visibleDuration), cancellationToken: ct);
-            await LMotion.Create(transform.localScale, Vector3.zero, fadeDuration)
-                .BindToLocalScale(transform)
-                .AddTo(gameObject)
-                .ToUniTask(ct);
+
+            // フェードアウトアニメーション
+            var startScale = transform.localScale;
+            var elapsed = 0f;
+
+            while (elapsed < fadeDuration)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                elapsed += Time.deltaTime;
+                var t = Mathf.Clamp01(elapsed / fadeDuration);
+                transform.localScale = Vector3.Lerp(startScale, Vector3.zero, t);
+
+                await UniTask.Yield(PlayerLoopTiming.Update, ct);
+            }
+
+            // 最終的に確実にゼロにする
+            transform.localScale = Vector3.zero;
         }
     }
 }

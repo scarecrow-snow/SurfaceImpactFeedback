@@ -18,9 +18,7 @@ Unity環境でのサーフェス固有のインパクト（衝撃）エフェク
   - UniTask 2.5.10 (非同期処理)
   - R3 1.3.0 (Reactive Extensions)
   - ObservableCollections (コレクション監視)
-  - LitMotion (アニメーション)
   - ZLinq 1.5.1 (ゼロアロケーションLINQ最適化)
-  - Burst (高性能計算)
 
 ## クイックスタート
 
@@ -201,38 +199,91 @@ var closestRenderer = renderers
 3. `SurfaceImpactFeedback`のSurfacesリストに追加
 
 ### カスタムエフェクトの実装
+
+UniTaskを活用した軽量なエフェクト実装例：
+
 ```csharp
-public class CustomEffect : MonoBehaviour, IEffect
+public class CustomFadeEffect : MonoBehaviour, IEffect
 {
-    [SerializeField] private float duration = 5f;
-    [SerializeField] private AnimationCurve fadeCurve;
-    
+    [SerializeField] private float visibleDuration = 3f;
+    [SerializeField] private float fadeDuration = 2f;
+    [SerializeField] private AnimationCurve fadeCurve = AnimationCurve.EaseInOut(0, 1, 1, 0);
+
     public async UniTask PlayEffect(CancellationToken ct)
     {
-        // カスタムエフェクト処理
-        await CustomFadeLogic(ct);
-    }
-    
-    private async UniTask CustomFadeLogic(CancellationToken ct)
-    {
-        // 独自のフェード処理実装
-        float elapsed = 0f;
+        // 指定時間表示を維持
+        await UniTask.Delay(TimeSpan.FromSeconds(visibleDuration), cancellationToken: ct);
+
+        // アルファフェードアウト処理
         var renderer = GetComponent<Renderer>();
         var material = renderer.material;
-        
-        while (elapsed < duration)
+        var startAlpha = material.color.a;
+        var elapsed = 0f;
+
+        while (elapsed < fadeDuration)
         {
+            ct.ThrowIfCancellationRequested();
+
             elapsed += Time.deltaTime;
-            float alpha = fadeCurve.Evaluate(elapsed / duration);
-            material.color = new Color(
-                material.color.r, 
-                material.color.g, 
-                material.color.b, 
-                alpha
-            );
-            
-            await UniTask.Yield(ct);
+            var t = Mathf.Clamp01(elapsed / fadeDuration);
+            var alpha = Mathf.Lerp(startAlpha, 0f, fadeCurve.Evaluate(t));
+
+            var color = material.color;
+            color.a = alpha;
+            material.color = color;
+
+            await UniTask.Yield(PlayerLoopTiming.Update, ct);
         }
+
+        // 完全に透明にする
+        var finalColor = material.color;
+        finalColor.a = 0f;
+        material.color = finalColor;
+    }
+}
+```
+
+**SimpleDecalの実装例**（スケールフェードアウト）:
+
+```csharp
+public class SimpleDecal : MonoBehaviour, IEffect
+{
+    [SerializeField] float visibleDuration = 3f;
+    [SerializeField] float fadeDuration = 2f;
+
+    Vector3 initialScale;
+
+    void Awake()
+    {
+        initialScale = transform.localScale;
+    }
+
+    void OnEnable()
+    {
+        transform.localScale = initialScale;
+    }
+
+    public async UniTask PlayEffect(CancellationToken ct)
+    {
+        // 指定時間表示を維持
+        await UniTask.Delay(TimeSpan.FromSeconds(visibleDuration), cancellationToken: ct);
+
+        // スケールフェードアウト
+        var startScale = transform.localScale;
+        var elapsed = 0f;
+
+        while (elapsed < fadeDuration)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            elapsed += Time.deltaTime;
+            var t = Mathf.Clamp01(elapsed / fadeDuration);
+            transform.localScale = Vector3.Lerp(startScale, Vector3.zero, t);
+
+            await UniTask.Yield(PlayerLoopTiming.Update, ct);
+        }
+
+        transform.localScale = Vector3.zero;
     }
 }
 ```
@@ -244,7 +295,7 @@ public class CustomEffect : MonoBehaviour, IEffect
 
 ## 対応可能なエフェクトシステム
 
-- **SimpleDecal**: 基本的なスケールフェードアウト
+- **SimpleDecal**: UniTaskベースの軽量スケールフェードアウト（外部依存なし）
 - **URP Decal Projector**: Universal Render Pipelineの標準デカール
 - **HDRP Decal**: High Definition Render Pipelineの高品質デカール
 - **カスタムエフェクト**: ユーザー独自のエフェクト実装
@@ -294,6 +345,8 @@ var closestRenderer = renderers
 - **インターフェース抽象化**: 仮想関数呼び出しの最適化
 - **ファクトリーパターン**: オブジェクト生成のオーバーヘッド削減
 - **強化されたエラーハンドリング**: try-catch-finally構造で安全かつ効率的な処理
+- **軽量なエフェクト実装**: 外部ライブラリに依存しないUniTask + Lerpによる最適化
+- **階層構造対応**: GetComponentInChildrenによる柔軟なRenderer検索
 
 ## プロジェクト構造
 
@@ -335,6 +388,51 @@ Assets/Surface Manager/
 - ZLinq 1.5.1
 
 ## リファクタリング履歴
+
+### v2.2.0 - 依存関係の最適化とエラーハンドリング強化 (2025年10月)
+
+#### 主な改善点
+- **LitMotion依存の削除**: SimpleDecalをUniTaskベースの軽量実装に変更
+- **RendererTextureStrategy強化**: 子オブジェクトのRenderer検索に対応
+- **エラーハンドリング改善**: より詳細なスタックトレースと内部例外情報の出力
+- **Burstコンパイルエラー解消**: 外部ライブラリ依存を削減し安定性向上
+
+#### 達成された成果
+- **依存関係削減**: LitMotionへの依存を削除し、プロジェクトの軽量化
+- **階層構造対応**: Rendererが子オブジェクトにある場合も正しくテクスチャを取得
+- **安定性向上**: Burstコンパイルエラーの根本原因を解消
+- **保守性向上**: シンプルな実装でデバッグとメンテナンスが容易
+
+#### 技術的詳細
+```csharp
+// LitMotion使用前（複雑な依存関係）
+await LMotion.Create(transform.localScale, Vector3.zero, fadeDuration)
+    .BindToLocalScale(transform)
+    .AddTo(gameObject)
+    .ToUniTask(ct);
+
+// UniTaskベースの軽量実装（依存なし）
+var startScale = transform.localScale;
+var elapsed = 0f;
+while (elapsed < fadeDuration)
+{
+    ct.ThrowIfCancellationRequested();
+    elapsed += Time.deltaTime;
+    var t = Mathf.Clamp01(elapsed / fadeDuration);
+    transform.localScale = Vector3.Lerp(startScale, Vector3.zero, t);
+    await UniTask.Yield(PlayerLoopTiming.Update, ct);
+}
+```
+
+#### Renderer検索の強化
+```csharp
+// 親オブジェクトにRendererがない場合、子オブジェクトから検索
+var childMeshFilter = _renderer.GetComponentInChildren<MeshFilter>();
+if (childMeshFilter != null && childMeshFilter.TryGetComponent(out Renderer childRenderer))
+{
+    texture = GetTextureFromMesh(childMeshFilter.mesh, triangleIndex, childRenderer.sharedMaterials);
+}
+```
 
 ### v2.1.0 - エフェクトシステムの汎用化 (2025年7月)
 

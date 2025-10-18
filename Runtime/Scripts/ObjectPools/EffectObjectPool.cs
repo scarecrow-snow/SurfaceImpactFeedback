@@ -16,6 +16,7 @@ namespace SCLib_SurfaceImpactFeedback
         /// <summary>
         /// コンストラクタ
         /// </summary>
+        /// <param name="parentTransform">親のTransform</param>
         /// <param name="decalPrefab">エフェクトプレハブ</param>
         /// <param name="collectionCheck">重複チェックを行うか</param>
         /// <param name="defaultCapacity">初期プールサイズ</param>

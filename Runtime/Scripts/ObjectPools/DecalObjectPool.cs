@@ -87,8 +87,8 @@ namespace SCLib_SurfaceImpactFeedback
             }
             catch (Exception ex)
             {
-                // その他のエラーをログに出力
-                SurfaceImpactLogger.LogError($"デカールエフェクト再生中にエラーが発生しました: {ex.Message}", SurfaceImpactFeedbackLogCategory.Pool);
+                // その他のエラーをログに出力（詳細なスタックトレース付き）
+                SurfaceImpactLogger.LogError($"デカールエフェクト再生中にエラーが発生しました: {ex.Message}\nスタックトレース: {ex.StackTrace}\n内部例外: {ex.InnerException?.Message}", SurfaceImpactFeedbackLogCategory.Pool);
             }
             finally
             {

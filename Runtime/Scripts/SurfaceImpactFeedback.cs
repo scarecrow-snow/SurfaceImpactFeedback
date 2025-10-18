@@ -44,7 +44,7 @@ namespace SCLib_SurfaceImpactFeedback
         /// <param name="parent">エフェクトの親Transform（nullの場合はRoot）</param>
         /// <param name="configuration">システム設定</param>
         /// <exception cref="ArgumentNullException">必須パラメータがnullの場合</exception>
-        public SurfaceImpactFeedback(SurfaceImpactConfiguration configuration, Transform parent, IImpactSound soundSystem)
+        public SurfaceImpactFeedback(SurfaceImpactConfiguration configuration, Transform parent, IImpactSound soundSystem = null)
         {
             impactSound = soundSystem;
             parentTransform = parent;
@@ -170,7 +170,7 @@ namespace SCLib_SurfaceImpactFeedback
                         {
                             pool?.Dispose();
                         }
-                        catch (System.Exception ex)
+                        catch (Exception ex)
                         {
                             SurfaceImpactLogger.LogError($"プール破棄中にエラーが発生: {ex.Message}", SurfaceImpactFeedbackLogCategory.Pool);
                         }
@@ -189,7 +189,7 @@ namespace SCLib_SurfaceImpactFeedback
 
                 SurfaceImpactLogger.LogInfo("リソース解放が完了しました", SurfaceImpactFeedbackLogCategory.Lifecycle);
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
                 SurfaceImpactLogger.LogError($"リソース解放中に重大なエラーが発生: {ex.Message}", SurfaceImpactFeedbackLogCategory.Lifecycle);
             }

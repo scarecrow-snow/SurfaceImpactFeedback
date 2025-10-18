@@ -13,7 +13,7 @@ public class ClickImpact : MonoBehaviour
 
     void Awake()
     {
-        surfaceImpactFeedback = new SurfaceImpactFeedback(config, null, null);
+        surfaceImpactFeedback = new SurfaceImpactFeedback(config, parentTransform);
     }
 
     void OnDestroy()

@@ -55,9 +55,10 @@ namespace SCLib_SurfaceImpactFeedback.TextureStrategy
 
         /// <summary>
         /// 指定された三角形インデックスに基づいてRendererのテクスチャ情報を取得します
-        /// 
+        ///
         /// MeshFilterまたはSkinnedMeshRendererからメッシュを取得し、
         /// 三角形インデックスに基づいて適切なマテリアルのテクスチャを特定します。
+        /// Rendererが直接持っていない場合は、子オブジェクトから検索します。
         /// </summary>
         /// <param name="hitPoint">使用されません（Renderer用）</param>
         /// <param name="triangleIndex">メッシュの三角形インデックス</param>
@@ -78,11 +79,29 @@ namespace SCLib_SurfaceImpactFeedback.TextureStrategy
             {
                 texture = GetTextureFromMesh(smr.sharedMesh, triangleIndex, _renderer.sharedMaterials);
             }
-            // 対応するコンポーネントが見つからない場合
+            // Rendererに直接MeshFilter/SkinnedMeshRendererが無い場合、子オブジェクトから検索
             else
             {
-                Debug.LogError($"{_renderer.name} has no MeshFilter or SkinnedMeshRenderer! Using default impact effect instead of texture-specific one because we'll be unable to find the correct texture!");
-                return _workTextures;
+                // 子オブジェクトからMeshFilterを検索
+                var childMeshFilter = _renderer.GetComponentInChildren<MeshFilter>();
+                if (childMeshFilter != null && childMeshFilter.TryGetComponent(out Renderer childRenderer))
+                {
+                    texture = GetTextureFromMesh(childMeshFilter.mesh, triangleIndex, childRenderer.sharedMaterials);
+                }
+                else
+                {
+                    // 子オブジェクトからSkinnedMeshRendererを検索
+                    var childSkinnedMeshRenderer = _renderer.GetComponentInChildren<SkinnedMeshRenderer>();
+                    if (childSkinnedMeshRenderer != null)
+                    {
+                        texture = GetTextureFromMesh(childSkinnedMeshRenderer.sharedMesh, triangleIndex, childSkinnedMeshRenderer.sharedMaterials);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"{_renderer.name} およびその子オブジェクトに MeshFilter または SkinnedMeshRenderer が見つかりません。デフォルトのインパクトエフェクトを使用します。");
+                        return _workTextures;
+                    }
+                }
             }
 
             // テクスチャが取得できた場合はリストに追加（アルファ値は1.0固定）

@@ -38,7 +38,7 @@ public class ClickImpact : MonoBehaviour
             if (Physics.Raycast(ray, out hit))
             {
                 // ヒットした情報からインパクトエフェクトを発生させる
-                surfaceImpactFeedback.HandleImpact(hit.collider.gameObject, hit.point, hit.normal, impactType);
+                surfaceImpactFeedback.HandleImpact(hit.collider, hit.point, hit.normal, impactType);
             }
         }
     }

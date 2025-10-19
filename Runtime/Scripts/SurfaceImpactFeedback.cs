@@ -278,13 +278,13 @@ namespace SCLib_SurfaceImpactFeedback
         /// インパクトエフェクトのメイン処理
         /// ヒットしたオブジェクトのテクスチャを解析し、適切なサーフェスエフェクトを実行する
         /// </summary>
-        /// <param name="HitObject">ヒットしたGameObject</param>
+        /// <param name="HitCollider">ヒットしたGameObject</param>
         /// <param name="HitPoint">ヒットポイントの世界座標</param>
         /// <param name="HitNormal">ヒット面の法線ベクトル</param>
         /// <param name="Impact">インパクトタイプ（弾丸、爆発等）</param>
         /// <param name="TriangleIndex">メッシュの三角形インデックス（オプション）</param>
         /// <exception cref="ObjectDisposedException">既に破棄済みの場合</exception>
-        public void HandleImpact(GameObject HitObject, in Vector3 HitPoint, in Vector3 HitNormal, ImpactType Impact, int TriangleIndex = 0)
+        public void HandleImpact(Collider HitCollider, in Vector3 HitPoint, in Vector3 HitNormal, ImpactType Impact, int TriangleIndex = 0)
         {
             if (disposed)
             {
@@ -298,7 +298,7 @@ namespace SCLib_SurfaceImpactFeedback
             }
 
             // インパクト処理を実行
-            Play(HitObject, HitPoint, HitNormal, Impact, TriangleIndex);
+            Play(HitCollider.gameObject, HitPoint, HitNormal, Impact, TriangleIndex);
         }
 
         /// <summary>
